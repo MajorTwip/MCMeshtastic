@@ -34,6 +34,8 @@ export interface AppStateType {
 
   // Log
   log: LogEntry[];
+  /** Monotonically increasing counter used to assign unique log entry IDs. */
+  _nextLogId: number;
 }
 
 // ── Initial state ──────────────────────────────────────────────────────────────
@@ -49,6 +51,7 @@ const initialState: AppStateType = {
   packetsFromBle: 0,
   packetsFromUdp: 0,
   log: [],
+  _nextLogId: 1,
 };
 
 // ── Actions ────────────────────────────────────────────────────────────────────
@@ -64,8 +67,6 @@ type Action =
   | {type: 'INCREMENT_UDP_PACKETS'}
   | {type: 'ADD_LOG'; entry: Omit<LogEntry, 'id'>}
   | {type: 'CLEAR_LOG'};
-
-let _logId = 0;
 
 function reducer(state: AppStateType, action: Action): AppStateType {
   switch (action.type) {
@@ -100,10 +101,11 @@ function reducer(state: AppStateType, action: Action): AppStateType {
     case 'ADD_LOG':
       return {
         ...state,
+        _nextLogId: state._nextLogId + 1,
         // Keep last 200 log entries to avoid unbounded memory growth
         log: [
           ...state.log.slice(-199),
-          {...action.entry, id: ++_logId},
+          {...action.entry, id: state._nextLogId},
         ],
       };
 

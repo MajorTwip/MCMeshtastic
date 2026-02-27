@@ -1,27 +1,26 @@
+'use strict';
+
 /**
- * BridgeService.test.ts
+ * BridgeService.test.js
  *
  * Tests for BridgeService routing logic using mocked BT and multicast services.
  */
 
-import {BridgeService} from '../src/services/BridgeService';
-import {BluetoothService} from '../src/services/BluetoothService';
-import {MulticastService} from '../src/services/MulticastService';
-import {encodeMeshPacket, PORTNUM_DATA_APP} from '../src/services/MeshtasticProtocol';
+const { BridgeService } = require('../src/services/BridgeService');
+const { BluetoothService } = require('../src/services/BluetoothService');
+const { MulticastService } = require('../src/services/MulticastService');
+const { encodeMeshPacket } = require('../src/services/MeshtasticProtocol');
 
-// ── Mocks ──────────────────────────────────────────────────────────────────────
+// ── Mocks ─────────────────────────────────────────────────────────────────────
 
 // We mock the module-level imports so BridgeService uses our fakes
 jest.mock('../src/services/BluetoothService');
 jest.mock('../src/services/MulticastService');
 
-const MockBluetoothService = BluetoothService as jest.MockedClass<typeof BluetoothService>;
-const MockMulticastService = MulticastService as jest.MockedClass<typeof MulticastService>;
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-// ── Helpers ────────────────────────────────────────────────────────────────────
-
-function makeBleService(): jest.Mocked<BluetoothService> {
-  return new MockBluetoothService(() => {}) as jest.Mocked<BluetoothService>;
+function makeBleService() {
+  return new BluetoothService(() => {});
 }
 
 function makeConfig() {
@@ -32,12 +31,12 @@ function makeConfig() {
   };
 }
 
-// ── Tests ──────────────────────────────────────────────────────────────────────
+// ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('BridgeService', () => {
-  let bleService: jest.Mocked<BluetoothService>;
-  let logs: string[];
-  let packetCounts: {ble: number; udp: number};
+  let bleService;
+  let logs;
+  let packetCounts;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -46,40 +45,40 @@ describe('BridgeService', () => {
     bleService.connect.mockResolvedValue(undefined);
     bleService.disconnect.mockResolvedValue(undefined);
     bleService.sendPacket.mockResolvedValue(undefined);
-    Object.defineProperty(bleService, 'isConnected', {get: () => true});
+    Object.defineProperty(bleService, 'isConnected', { get: () => true });
 
-    // Make MulticastService constructor return a mock instance with a start/stop/send
-    MockMulticastService.prototype.start = jest.fn().mockResolvedValue(undefined);
-    MockMulticastService.prototype.stop = jest.fn();
-    MockMulticastService.prototype.send = jest.fn().mockResolvedValue(undefined);
-    Object.defineProperty(MockMulticastService.prototype, 'isActive', {
+    // Make MulticastService constructor return a mock instance with start/stop/send
+    MulticastService.prototype.start = jest.fn().mockResolvedValue(undefined);
+    MulticastService.prototype.stop = jest.fn();
+    MulticastService.prototype.send = jest.fn().mockResolvedValue(undefined);
+    Object.defineProperty(MulticastService.prototype, 'isActive', {
       get: jest.fn().mockReturnValue(true),
       configurable: true,
     });
 
     logs = [];
-    packetCounts = {ble: 0, udp: 0};
+    packetCounts = { ble: 0, udp: 0 };
   });
 
-  // ── start / stop ─────────────────────────────────────────────────────────────
+  // ── start / stop ─────────────────────────────────────────────────────────
 
   describe('start()', () => {
     it('connects BLE and starts multicast', async () => {
       const bridge = new BridgeService(
         bleService,
-        msg => logs.push(msg),
+        (msg) => logs.push(msg),
         () => {},
       );
 
       await bridge.start(makeConfig());
 
       expect(bleService.connect).toHaveBeenCalledWith('device-abc', expect.any(Function));
-      expect(MockMulticastService.prototype.start).toHaveBeenCalled();
+      expect(MulticastService.prototype.start).toHaveBeenCalled();
       expect(bridge.isRunning).toBe(true);
     });
 
     it('does not start twice if already running', async () => {
-      const bridge = new BridgeService(bleService, msg => logs.push(msg), () => {});
+      const bridge = new BridgeService(bleService, (msg) => logs.push(msg), () => {});
 
       await bridge.start(makeConfig());
       await bridge.start(makeConfig()); // second call should be no-op
@@ -93,14 +92,12 @@ describe('BridgeService', () => {
       const bridge = new BridgeService(bleService, () => {}, () => {});
 
       await expect(bridge.start(makeConfig())).rejects.toThrow('BLE connect failed');
-      expect(MockMulticastService.prototype.stop).toHaveBeenCalled();
+      expect(MulticastService.prototype.stop).toHaveBeenCalled();
       expect(bridge.isRunning).toBe(false);
     });
 
     it('throws if multicast start fails', async () => {
-      MockMulticastService.prototype.start = jest
-        .fn()
-        .mockRejectedValue(new Error('bind failed'));
+      MulticastService.prototype.start = jest.fn().mockRejectedValue(new Error('bind failed'));
 
       const bridge = new BridgeService(bleService, () => {}, () => {});
 
@@ -116,7 +113,7 @@ describe('BridgeService', () => {
       await bridge.stop();
 
       expect(bleService.disconnect).toHaveBeenCalled();
-      expect(MockMulticastService.prototype.stop).toHaveBeenCalled();
+      expect(MulticastService.prototype.stop).toHaveBeenCalled();
       expect(bridge.isRunning).toBe(false);
     });
 
@@ -127,11 +124,11 @@ describe('BridgeService', () => {
     });
   });
 
-  // ── UDP → BLE routing ────────────────────────────────────────────────────────
+  // ── UDP → BLE routing ─────────────────────────────────────────────────────
 
-  describe('UDP → BLE routing', () => {
+  describe('UDP -> BLE routing', () => {
     it('encodes UDP payload as MeshPacket and sends via BLE', async () => {
-      let capturedBlePacket: Uint8Array | null = null;
+      let capturedBlePacket = null;
       bleService.sendPacket.mockImplementation(async (bytes) => {
         capturedBlePacket = bytes;
       });
@@ -140,15 +137,11 @@ describe('BridgeService', () => {
       await bridge.start(makeConfig());
 
       // Grab the message callback passed to MulticastService constructor
-      const multicastInstance = MockMulticastService.mock.instances[0];
       // The constructor is called with (group, port, onMessage, onLog)
-      const onMessage = MockMulticastService.mock.calls[0][2] as (
-        data: Uint8Array,
-        rinfo: {address: string; port: number},
-      ) => void;
+      const onMessage = MulticastService.mock.calls[0][2];
 
       const testPayload = new Uint8Array([0x01, 0x02, 0x03]);
-      onMessage(testPayload, {address: '224.0.0.251', port: 5353});
+      onMessage(testPayload, { address: '224.0.0.251', port: 5353 });
 
       // Allow any async operations to settle
       await Promise.resolve();
@@ -156,7 +149,7 @@ describe('BridgeService', () => {
       expect(bleService.sendPacket).toHaveBeenCalledTimes(1);
       expect(capturedBlePacket).not.toBeNull();
       // The encoded packet should be a valid protobuf MeshPacket
-      expect((capturedBlePacket as unknown as Uint8Array).length).toBeGreaterThan(0);
+      expect(capturedBlePacket.length).toBeGreaterThan(0);
     });
 
     it('increments udp packet counter', async () => {
@@ -164,40 +157,34 @@ describe('BridgeService', () => {
       const bridge = new BridgeService(bleService, () => {}, onCount);
       await bridge.start(makeConfig());
 
-      const onMessage = MockMulticastService.mock.calls[0][2] as (
-        data: Uint8Array,
-        rinfo: {address: string; port: number},
-      ) => void;
+      const onMessage = MulticastService.mock.calls[0][2];
 
-      onMessage(new Uint8Array([0xAB]), {address: '224.0.0.251', port: 5353});
+      onMessage(new Uint8Array([0xab]), { address: '224.0.0.251', port: 5353 });
       await Promise.resolve();
 
       expect(onCount).toHaveBeenCalledWith('udp');
     });
   });
 
-  // ── BLE → UDP routing ────────────────────────────────────────────────────────
+  // ── BLE → UDP routing ─────────────────────────────────────────────────────
 
-  describe('BLE → UDP routing', () => {
+  describe('BLE -> UDP routing', () => {
     it('decodes MeshPacket from BLE and sends payload via multicast', async () => {
       const bridge = new BridgeService(bleService, () => {}, () => {});
       await bridge.start(makeConfig());
 
       // Grab the BLE packet callback
-      const blePacketCallback = bleService.connect.mock.calls[0][1] as (
-        bytes: Uint8Array,
-      ) => void;
+      const blePacketCallback = bleService.connect.mock.calls[0][1];
 
       // Encode a test payload as a MeshPacket (simulating what Meshtastic sends)
-      const testPayload = new Uint8Array([0xCA, 0xFE, 0xBA, 0xBE]);
+      const testPayload = new Uint8Array([0xca, 0xfe, 0xba, 0xbe]);
       const meshPacketBytes = encodeMeshPacket(testPayload);
 
       blePacketCallback(meshPacketBytes);
       await Promise.resolve();
 
-      expect(MockMulticastService.prototype.send).toHaveBeenCalledTimes(1);
-      const sentBytes = (MockMulticastService.prototype.send as jest.Mock).mock
-        .calls[0][0] as Uint8Array;
+      expect(MulticastService.prototype.send).toHaveBeenCalledTimes(1);
+      const sentBytes = MulticastService.prototype.send.mock.calls[0][0];
       expect(sentBytes).toEqual(testPayload);
     });
 
@@ -206,9 +193,7 @@ describe('BridgeService', () => {
       const bridge = new BridgeService(bleService, () => {}, onCount);
       await bridge.start(makeConfig());
 
-      const blePacketCallback = bleService.connect.mock.calls[0][1] as (
-        bytes: Uint8Array,
-      ) => void;
+      const blePacketCallback = bleService.connect.mock.calls[0][1];
 
       const meshPacketBytes = encodeMeshPacket(new Uint8Array([0x11, 0x22]));
       blePacketCallback(meshPacketBytes);
@@ -221,30 +206,30 @@ describe('BridgeService', () => {
       const bridge = new BridgeService(bleService, () => {}, () => {});
       await bridge.start(makeConfig());
 
-      const blePacketCallback = bleService.connect.mock.calls[0][1] as (
-        bytes: Uint8Array,
-      ) => void;
+      const blePacketCallback = bleService.connect.mock.calls[0][1];
 
       // Empty bytes → decodeMeshPacket returns null
       blePacketCallback(new Uint8Array([]));
       await Promise.resolve();
 
       // send should not be called since there's no payload
-      expect(MockMulticastService.prototype.send).not.toHaveBeenCalled();
+      expect(MulticastService.prototype.send).not.toHaveBeenCalled();
     });
 
     it('logs error and does not crash on malformed BLE bytes', async () => {
-      const errorLogs: string[] = [];
+      const errorLogs = [];
       const bridge = new BridgeService(
         bleService,
-        (msg, level) => { if (level === 'error') {errorLogs.push(msg);} },
+        (msg, level) => {
+          if (level === 'error') {
+            errorLogs.push(msg);
+          }
+        },
         () => {},
       );
       await bridge.start(makeConfig());
 
-      const blePacketCallback = bleService.connect.mock.calls[0][1] as (
-        bytes: Uint8Array,
-      ) => void;
+      const blePacketCallback = bleService.connect.mock.calls[0][1];
 
       // Bytes that fail proto decode (truncated field)
       blePacketCallback(new Uint8Array([0xff, 0xff, 0xff]));
@@ -255,7 +240,7 @@ describe('BridgeService', () => {
     });
   });
 
-  // ── isRunning ─────────────────────────────────────────────────────────────────
+  // ── isRunning ─────────────────────────────────────────────────────────────
 
   describe('isRunning', () => {
     it('is false before start', () => {

@@ -7,33 +7,6 @@ node_modules/
 npm-debug.log
 yarn-error.log
 
-# React Native
-*.orig.*
-*.jks
-*.p8
-*.p12
-*.key
-*.mobileprovision
-*.orig.*
-web-build/
-
-# Windows build output
-windows/MCMeshtastic/Debug/
-windows/MCMeshtastic/Release/
-windows/MCMeshtastic/x64/
-windows/MCMeshtastic/x86/
-windows/MCMeshtastic/ARM/
-windows/MCMeshtastic/ARM64/
-windows/*.VC.db
-windows/*.VC.opendb
-windows/*.sdf
-windows/*.opensdf
-windows/packages/
-
-# TypeScript
-dist/
-*.tsbuildinfo
-
 # Jest
 coverage/
 

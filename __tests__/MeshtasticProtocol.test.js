@@ -1,17 +1,19 @@
+'use strict';
+
 /**
- * MeshtasticProtocol.test.ts
+ * MeshtasticProtocol.test.js
  *
  * Tests for protobuf encode/decode round-trips.
  */
 
-import {
+const {
   encodeMeshPacket,
   decodeMeshPacket,
   PORTNUM_DATA_APP,
-} from '../src/services/MeshtasticProtocol';
+} = require('../src/services/MeshtasticProtocol');
 
 describe('MeshtasticProtocol', () => {
-  // ── encodeMeshPacket ──────────────────────────────────────────────────────────
+  // ── encodeMeshPacket ────────────────────────────────────────────────────────
 
   describe('encodeMeshPacket', () => {
     it('returns a non-empty Uint8Array', () => {
@@ -33,7 +35,7 @@ describe('MeshtasticProtocol', () => {
     });
   });
 
-  // ── decodeMeshPacket ──────────────────────────────────────────────────────────
+  // ── decodeMeshPacket ────────────────────────────────────────────────────────
 
   describe('decodeMeshPacket', () => {
     it('round-trips a simple payload', () => {
@@ -42,8 +44,8 @@ describe('MeshtasticProtocol', () => {
       const decoded = decodeMeshPacket(encoded);
 
       expect(decoded).not.toBeNull();
-      expect(decoded!.portnum).toBe(PORTNUM_DATA_APP);
-      expect(decoded!.payload).toEqual(original);
+      expect(decoded.portnum).toBe(PORTNUM_DATA_APP);
+      expect(decoded.payload).toEqual(original);
     });
 
     it('round-trips a single-byte payload', () => {
@@ -52,7 +54,7 @@ describe('MeshtasticProtocol', () => {
       const decoded = decodeMeshPacket(encoded);
 
       expect(decoded).not.toBeNull();
-      expect(decoded!.payload).toEqual(original);
+      expect(decoded.payload).toEqual(original);
     });
 
     it('round-trips a 512-byte payload', () => {
@@ -61,7 +63,7 @@ describe('MeshtasticProtocol', () => {
       const decoded = decodeMeshPacket(encoded);
 
       expect(decoded).not.toBeNull();
-      expect(decoded!.payload).toEqual(original);
+      expect(decoded.payload).toEqual(original);
     });
 
     it('returns null for an empty bytes buffer (no decoded field)', () => {
@@ -78,7 +80,7 @@ describe('MeshtasticProtocol', () => {
       const payload = new Uint8Array([1, 2, 3]);
       const encoded = encodeMeshPacket(payload);
       const decoded = decodeMeshPacket(encoded);
-      expect(decoded!.portnum).toBe(PORTNUM_DATA_APP);
+      expect(decoded.portnum).toBe(PORTNUM_DATA_APP);
     });
 
     it('round-trips arbitrary binary data (all byte values 0–255)', () => {
@@ -87,11 +89,11 @@ describe('MeshtasticProtocol', () => {
       const decoded = decodeMeshPacket(encoded);
 
       expect(decoded).not.toBeNull();
-      expect(decoded!.payload).toEqual(original);
+      expect(decoded.payload).toEqual(original);
     });
   });
 
-  // ── Idempotency ───────────────────────────────────────────────────────────────
+  // ── Idempotency ─────────────────────────────────────────────────────────────
 
   describe('idempotency', () => {
     it('same payload always produces the same encoded bytes', () => {
